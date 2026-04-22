@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# uv
+.uv/
+
+# direnv / env
+.envrc
+.env
+
+# macOS
+.DS_Store
+
+# project outputs (user-specific data; don't publish)
+out/
+issues.txt
+release-notes-*/

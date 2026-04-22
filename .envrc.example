@@ -1,0 +1,3 @@
+export JIRA_URL="https://jira.cubrid.org"
+export JIRA_USER="your_user"
+export JIRA_PASSWORD="your_password"
