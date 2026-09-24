@@ -39,9 +39,11 @@ def load_credentials() -> Credentials:
 def fetch_issue(creds: Credentials, issue_id: str) -> tuple[str, str | None]:
     endpoint = f"{creds.url}/rest/api/2/issue/{issue_id}"
     try:
+        # No `fields` param: jira.cubrid.org answers https with a 302 to http and re-encodes the
+        # query, turning the comma into %252C so "summary,description" arrives as one bogus field
+        # name and the response comes back without `fields`. Requesting all fields avoids it.
         resp = requests.get(
             endpoint,
-            params={"fields": "summary,description"},
             auth=(creds.user, creds.password),
             timeout=REQUEST_TIMEOUT,
         )
