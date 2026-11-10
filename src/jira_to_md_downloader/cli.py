@@ -55,6 +55,14 @@ def _resolve_issue_ids(args: argparse.Namespace) -> list[str] | None:
         return None
 
 
+def _comment_heading(comment: jira.Comment) -> str:
+    # "2026-11-06T14:03:12.000+0900" -> "2026-11-06 14:03" (the server's local time)
+    heading = f"{comment.author} · {comment.created[:16].replace('T', ' ')}"
+    if comment.visibility:
+        heading += f" · restricted to {comment.visibility}"
+    return heading
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -88,10 +96,21 @@ def main(argv: list[str] | None = None) -> int:
     results: list[tuple[str, bool, str]] = []
     for issue_id in issue_ids:
         try:
-            summary, description = jira.fetch_issue(creds, issue_id)
-            body_md = convert.jira_to_markdown(description or "")
+            issue = jira.fetch_issue(creds, issue_id)
+            body_md = convert.jira_to_markdown(issue.description or "")
+            comments = [
+                # headings inside a comment go below its "### author · date" heading
+                (_comment_heading(c), convert.jira_to_markdown(c.body, shift_headings=3))
+                for c in issue.comments
+            ]
             out_path = output_dir / f"{issue_id}.md"
-            issue_io.write_markdown(out_path, summary, body_md)
+            issue_io.write_markdown(
+                out_path,
+                issue.summary,
+                body_md,
+                comments,
+                issue.comment_total - len(issue.comments),
+            )
             results.append((issue_id, True, str(out_path)))
         except (jira.IssueFetchError, convert.ConvertError, OSError) as e:
             print(f"warning: {issue_id}: {e}", file=sys.stderr)

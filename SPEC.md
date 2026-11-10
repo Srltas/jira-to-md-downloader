@@ -5,12 +5,12 @@ jira.cubrid.org의 이슈를 조회해 로컬에 Markdown 파일로 저장하는
 ## 1. 목표
 
 - 하나 이상의 Jira 이슈 ID를 입력받아, 각 이슈당 한 개의 `.md` 파일을 생성한다.
-- 변환 대상은 **summary** 와 **description** 두 필드로 한정한다.
+- 변환 대상은 **summary**, **description**, **comments** 세 필드로 한정한다.
 - 파일명은 이슈 ID와 동일하게 한다 (`{ID}.md`).
 
 ## 2. 비목표 (이번 범위 외)
 
-- Assignee / Reporter / Status / Labels / Comments 등 기타 필드
+- Assignee / Reporter / Status / Labels 등 기타 필드
 - 첨부파일·인라인 이미지 다운로드 및 경로 재작성
 - Jira Cloud (ADF 포맷) 대응
 - 병렬 처리, rate-limit 핸들링 등 고급 기능
@@ -72,20 +72,29 @@ CUBRID-26725
 
 이슈 ID 한 개당:
 
-1. `GET {JIRA_URL}/rest/api/2/issue/{ID}?fields=summary,description` 호출 (basic auth)
+1. `GET {JIRA_URL}/rest/api/2/issue/{ID}` 호출 (basic auth). `fields` 파라미터는 붙이지 않는다: jira.cubrid.org의 http/https 리다이렉트가 쿼리를 다시 인코딩해 쉼표가 깨진다.
 2. 응답 파싱:
    - `fields.summary` (문자열, 필수)
    - `fields.description` (문자열 또는 `null`)
+   - `fields.comment.comments` (작성자 `author.displayName`, 작성 시각 `created`, 본문 `body`, 공개 범위 `visibility.value`)
 3. description이 `null` 이거나 빈 문자열이면 빈 본문으로 처리.
 4. description(Jira wiki markup)을 pandoc으로 변환:
-   `pandoc -f jira -t gfm` (stdin → stdout)
+   `pandoc -f jira -t gfm` (stdin → stdout). 댓글 본문도 같은 방식으로 변환하되, 댓글 머리글 아래에 놓이도록 `--shift-heading-level-by=3`으로 제목을 세 단계 낮춘다.
 5. 아래 구조로 `{OUTPUT_DIR}/{ID}.md` 에 저장 (이미 존재하면 **덮어쓰기**):
 
    ```markdown
    # {summary}
 
    {pandoc으로 변환된 description}
+
+   ## Comments
+
+   ### {작성자} · {작성 시각 YYYY-MM-DD HH:MM}[ · restricted to {공개 범위}]
+
+   {pandoc으로 변환된 댓글 본문}
    ```
+
+   댓글이 없으면 Comments 절을 쓰지 않는다. 응답에 실린 댓글이 전체 수보다 적으면 빠진 개수를 끝에 적는다.
 
 6. 성공 로그 출력.
 
@@ -152,7 +161,7 @@ jira-to-md-downloader/
 ## 12. 향후 확장 아이디어
 
 - 첨부파일·인라인 이미지 다운로드 및 경로 재작성
-- 주석(comments), labels 등 추가 필드 옵션
+- labels 등 추가 필드 옵션
 - Jira Cloud (ADF) 대응
 - JQL 기반 배치 다운로드 (`--jql "project = TOOLS AND ..."`)
 - 병렬 처리 (`--concurrency N`)

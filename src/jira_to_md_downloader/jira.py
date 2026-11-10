@@ -17,6 +17,22 @@ class IssueFetchError(Exception):
 
 
 @dataclass(frozen=True)
+class Comment:
+    author: str
+    created: str
+    body: str
+    visibility: str | None
+
+
+@dataclass(frozen=True)
+class Issue:
+    summary: str
+    description: str | None
+    comments: list[Comment]
+    comment_total: int
+
+
+@dataclass(frozen=True)
 class Credentials:
     url: str
     user: str
@@ -36,12 +52,13 @@ def load_credentials() -> Credentials:
     )
 
 
-def fetch_issue(creds: Credentials, issue_id: str) -> tuple[str, str | None]:
+def fetch_issue(creds: Credentials, issue_id: str) -> Issue:
     endpoint = f"{creds.url}/rest/api/2/issue/{issue_id}"
     try:
-        # No `fields` param: jira.cubrid.org answers https with a 302 to http and re-encodes the
+        # No `fields` param: jira.cubrid.org redirects between http and https and re-encodes the
         # query, turning the comma into %252C so "summary,description" arrives as one bogus field
-        # name and the response comes back without `fields`. Requesting all fields avoids it.
+        # name and the response comes back without `fields`. Requesting all fields avoids it, and
+        # the full response also carries every comment.
         resp = requests.get(
             endpoint,
             auth=(creds.user, creds.password),
@@ -56,9 +73,21 @@ def fetch_issue(creds: Credentials, issue_id: str) -> tuple[str, str | None]:
     try:
         data = resp.json()
         fields = data["fields"]
-        summary = fields["summary"]
-        description = fields.get("description")
+        thread = fields.get("comment") or {}
+        comments = [
+            Comment(
+                author=(c.get("author") or {}).get("displayName") or "(unknown)",
+                created=c["created"],
+                body=c.get("body") or "",
+                visibility=(c.get("visibility") or {}).get("value"),
+            )
+            for c in thread.get("comments") or []
+        ]
+        return Issue(
+            summary=fields["summary"],
+            description=fields.get("description"),
+            comments=comments,
+            comment_total=thread.get("total", len(comments)),
+        )
     except (ValueError, KeyError, TypeError) as e:
         raise IssueFetchError(f"unexpected response format: {e}") from e
-
-    return summary, description

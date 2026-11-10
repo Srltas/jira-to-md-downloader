@@ -7,7 +7,7 @@ jira.cubrid.org의 이슈를 조회해 로컬에 Markdown 파일로 저장하는
 
 - 여러 이슈를 한 번에 처리 — CLI 인자 또는 `issues.txt` 리스트 파일 지원
 - 이슈 한 개당 `.md` 파일 하나로 저장 (파일명 = 이슈 ID)
-- **summary / description**만 추출 (Assignee, Reporter 등 메타데이터 제외)
+- **summary / description / 댓글**만 추출 (Assignee, Reporter 등 메타데이터 제외). 공개 범위가 제한된 댓글은 머리글에 `restricted to <역할>`로 표시
 - Jira wiki markup → GitHub Flavored Markdown 변환 (pandoc)
 - 에러 발생 시 해당 이슈만 건너뛰고 나머지 계속 진행
 
@@ -112,9 +112,15 @@ CUBRID-26725
 # {summary}
 
 {description을 pandoc으로 변환한 GFM 본문}
+
+## Comments
+
+### {작성자} · {작성 시각 YYYY-MM-DD HH:MM}
+
+{댓글 본문을 pandoc으로 변환한 GFM, 제목은 세 단계 낮춤}
 ```
 
-description이 비어있으면 summary 줄만 작성됩니다.
+description이 비어있으면 summary 줄만 작성됩니다. 댓글이 없으면 `## Comments` 절은 생략됩니다.
 
 ## 실행 종료
 
@@ -139,7 +145,7 @@ description이 비어있으면 summary 줄만 작성됩니다.
 ## 범위 외 (향후 확장 가능)
 
 - 첨부파일·인라인 이미지 다운로드
-- comments, labels 등 추가 필드
+- labels 등 추가 필드
 - Jira Cloud (ADF 포맷) 대응
 - JQL 기반 배치 다운로드
 

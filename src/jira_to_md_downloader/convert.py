@@ -5,12 +5,12 @@ class ConvertError(Exception):
     pass
 
 
-def jira_to_markdown(jira_wiki: str) -> str:
+def jira_to_markdown(jira_wiki: str, shift_headings: int = 0) -> str:
     if not jira_wiki:
         return ""
     try:
         result = subprocess.run(
-            ["pandoc", "-f", "jira", "-t", "gfm"],
+            ["pandoc", "-f", "jira", "-t", "gfm", f"--shift-heading-level-by={shift_headings}"],
             input=jira_wiki,
             capture_output=True,
             text=True,
